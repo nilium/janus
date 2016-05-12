@@ -1,0 +1,30 @@
+# OS X
+.DS_Store
+
+# Emacs
+# https://github.com/github/gitignore/blob/504f444dfa447e39e0205d3db784e31c2698b397/Global/Emacs.gitignore
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# Org-mode
+.org-id-locations
+*_archive
+
+# Vim
+# https://github.com/github/gitignore/blob/504f444dfa447e39e0205d3db784e31c2698b397/Global/Vim.gitignore
+# swap
+[._]*.s[a-w][a-z]
+[._]s[a-w][a-z]
+# session
+Session.vim
+# temporary
+.netrwhist
+*~
+# auto-generated tag files
+tags

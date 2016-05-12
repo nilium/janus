@@ -1,0 +1,12 @@
+[submodule "cmd/vendor/github.com/golang/glog"]
+	path = cmd/vendor/github.com/golang/glog
+	url = https://github.com/golang/glog
+[submodule "cmd/vendor/gopkg.in/yaml.v2"]
+	path = cmd/vendor/gopkg.in/yaml.v2
+	url = https://github.com/go-yaml/yaml.git
+[submodule "cmd/vendor/go.spiff.io/dagr"]
+	path = cmd/vendor/go.spiff.io/dagr
+	url = https://github.com/nilium/dagr
+[submodule "cmd/vendor/golang.org/x/net"]
+	path = cmd/vendor/golang.org/x/net
+	url = https://github.com/golang/net
