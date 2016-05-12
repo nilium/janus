@@ -4,6 +4,7 @@
 [submodule "cmd/vendor/gopkg.in/yaml.v2"]
 	path = cmd/vendor/gopkg.in/yaml.v2
 	url = https://github.com/go-yaml/yaml.git
+	branch = v2
 [submodule "cmd/vendor/go.spiff.io/dagr"]
 	path = cmd/vendor/go.spiff.io/dagr
 	url = https://github.com/nilium/dagr
