@@ -38,6 +38,7 @@ func newGateway(cfg *PortConfig, options ...outflux.Option) (g *gateway, err err
 
 func (g *gateway) String() string {
 	u := *g.cfg.Forward.URL()
+	u.User = nil
 	params := u.Query()
 	params.Del("u")
 	params.Del("p")
