@@ -146,7 +146,7 @@ func (p *porthole) Listen(ctx context.Context) (err error) {
 
 		err = p.listen(ctx)
 		if err == context.Canceled || err == context.DeadlineExceeded || err == nil {
-			glog.Infof("[%d] Halting reads on %v", addr)
+			glog.Infof("[%d] Halting reads on %v", i, addr)
 			return
 		}
 
@@ -155,7 +155,7 @@ func (p *porthole) Listen(ctx context.Context) (err error) {
 			// using that port, probably.
 			glog.Errorf("[%d] Unable to bind to %v -- will not retry: %v", i, addr, err)
 		} else if i == retries {
-			glog.Errorf("[%d] All attempts to bind to %v have failed -- will not retry: %v", err)
+			glog.Errorf("[%d] All attempts to bind to %v have failed -- will not retry: %v", i, addr, err)
 			return err
 		}
 
