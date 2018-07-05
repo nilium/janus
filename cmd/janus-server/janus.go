@@ -1,10 +1,7 @@
 package main
 
 import (
-	"errors"
 	"flag"
-	"fmt"
-	"io/ioutil"
 	"os"
 	"os/signal"
 	"sync"
@@ -12,113 +9,14 @@ import (
 
 	"github.com/golang/glog"
 
-	"gopkg.in/yaml.v2"
-
 	"golang.org/x/net/context"
 
 	"go.spiff.io/dagr/outflux"
 )
 
-type PortConfig struct {
-	Listen         []*Addr       `yaml:"listen"`
-	Forward        *URL          `yaml:"dest"`
-	FlushInterval  time.Duration `yaml:"flush-every"`
-	FlushSizeBytes int           `yaml:"flush-size"` // bytes
-	ReadTimeout    time.Duration `yaml:"read-timeout"`
-	WriteTimeout   time.Duration `yaml:"write-timeout"`
-
-	MaxRetries int     `yaml:"max-retries"`
-	Backoff    backoff `yaml:"backoff"`
-}
-
-func (p *PortConfig) UnmarshalYAML(load func(interface{}) error) error {
-	type plain PortConfig
-	v := plain{
-		FlushInterval:  time.Second * 5,
-		FlushSizeBytes: 16000,
-		ReadTimeout:    time.Second * 10,
-		WriteTimeout:   time.Second * 15,
-
-		MaxRetries: 10,
-		Backoff:    DefaultBackoff,
-	}
-
-	err := load(&v)
-	switch {
-	case err != nil:
-		return err
-	case v.Forward == nil:
-		return errors.New("ports: porthole missing dest URL")
-	case len(v.Listen) == 0:
-		return errors.New("ports: porthole missing listen address(es)")
-	}
-
-	*p = PortConfig(v)
-
-	return nil
-}
-
-func (p *PortConfig) mkproxy(options ...outflux.Option) *outflux.Proxy {
-	options = append([]outflux.Option{
-		outflux.Timeout(p.WriteTimeout),
-		outflux.RetryLimit(p.MaxRetries),
-		outflux.FlushSize(p.FlushSizeBytes),
-		outflux.BackoffFunc(p.Backoff.backoff),
-	}, options...)
-	return outflux.NewURL(nil, p.Forward.URL(), options...)
-}
-
-type Config struct {
-	Ports []*PortConfig `yaml:"ports"`
-
-	MaxRequests int `yaml:"max-requests"`
-}
-
-type Signal <-chan struct{}
-
-func (s Signal) Wait()                                { <-s }
-func (s Signal) AfterFunc(fn func())                  { go func() { s.Wait(); fn() }() }
-func (s Signal) DelayFunc(d time.Duration, fn func()) { go func() { s.Wait(); time.Sleep(d); fn() }() }
-
-type BroadcastFunc func()
-
-func (fn BroadcastFunc) Close() error { fn(); return nil }
-
-func mksignal() (Signal, BroadcastFunc) {
-	var (
-		sig  = make(chan struct{})
-		once sync.Once
-	)
-	return sig, func() { once.Do(func() { close(sig) }) }
-}
-
 var (
 	SHUTDOWN, die = mksignal()
-
-	cfgfiles stringvars
 )
-
-func init() {
-	flag.Var(&cfgfiles, "f", "Load `config file` at startup")
-}
-
-func loadyaml(dst interface{}, fpath string) (err error) {
-	fi := os.Stdin
-	if fpath != "-" {
-		fi, err = os.Open(fpath)
-		if err != nil {
-			return err
-		}
-		defer fi.Close()
-	}
-
-	b, err := ioutil.ReadAll(fi)
-	if err != nil {
-		return err
-	}
-
-	return yaml.Unmarshal(b, dst)
-}
 
 func main() {
 	outflux.Log = outflux.Stdlog
@@ -129,6 +27,7 @@ func main() {
 	SHUTDOWN.DelayFunc(time.Second, cancel)
 
 	config := Config{}
+	cfgfiles := flag.Args()
 	if len(cfgfiles) == 0 {
 		cfgfiles = []string{"-"}
 	}
@@ -138,7 +37,7 @@ func main() {
 			glog.Info("Reading config from standard input...")
 		}
 
-		if err := loadyaml(&config, fp); err != nil {
+		if err := parseConfig(&config, fp); err != nil {
 			glog.Fatalf("Unable to load config file %s: %v", fp, err)
 		}
 	}
@@ -201,15 +100,4 @@ func main() {
 
 	<-SHUTDOWN
 	wg.Wait()
-}
-
-type stringvars []string
-
-func (s *stringvars) Set(v string) error {
-	*s = append(*s, v)
-	return nil
-}
-
-func (s *stringvars) String() string {
-	return fmt.Sprint([]string(*s))
 }

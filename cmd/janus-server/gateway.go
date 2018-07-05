@@ -14,7 +14,7 @@ type gateway struct {
 }
 
 func newGateway(cfg *PortConfig, options ...outflux.Option) (g *gateway, err error) {
-	proxy := cfg.mkproxy(options...)
+	proxy := newProxy(cfg, options...)
 
 	var holes []*porthole
 	for _, addr := range cfg.Listen {
@@ -37,13 +37,12 @@ func newGateway(cfg *PortConfig, options ...outflux.Option) (g *gateway, err err
 }
 
 func (g *gateway) String() string {
-	u := *g.cfg.Forward.URL()
+	u := *g.cfg.Forward
 	u.User = nil
 	params := u.Query()
 	params.Del("u")
 	params.Del("p")
 	u.RawQuery = params.Encode()
-
 	return fmt.Sprint(g.cfg.Listen, "->", &u)
 }
 
@@ -68,4 +67,14 @@ func (g *gateway) Start(ctx context.Context) error {
 	go func() { <-ctx.Done(); errch <- ctx.Err() }()
 
 	return <-errch
+}
+
+func newProxy(p *PortConfig, options ...outflux.Option) *outflux.Proxy {
+	options = append([]outflux.Option{
+		outflux.Timeout(p.WriteTimeout),
+		outflux.RetryLimit(p.MaxRetries),
+		outflux.FlushSize(p.FlushSizeBytes),
+		outflux.BackoffFunc(p.Backoff.backoff),
+	}, options...)
+	return outflux.NewURL(nil, p.Forward, options...)
 }

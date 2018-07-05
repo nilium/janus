@@ -2,7 +2,7 @@ package main
 
 import (
 	"crypto/rand"
-	"errors"
+	"fmt"
 	"math"
 	"math/big"
 	"time"
@@ -11,31 +11,33 @@ import (
 )
 
 type backoff struct {
-	Interval time.Duration `yaml:"interval"`          // Defaults to 15s
-	Factor   float64       `yaml:"factor"`            // Defaults to 1
-	Grow     time.Duration `yaml:"grow-by"`           // Defaults to 1s
-	Min      time.Duration `yaml:"min"`               // Defaults to 7s
-	Max      time.Duration `yaml:"max"`               // Defaults to 3m
-	MaxExp   int           `yaml:"exp-max,omitempty"` // 63 if out of range or 0
-	ExpM     float64       `yaml:"exp-m"`
-	ExpScale float64       `yaml:"exp-y"` // (minimum is > 0, defaults to 1.5)
+	Interval time.Duration // Defaults to 15s
+	Factor   float64       // Defaults to 1
+	Grow     time.Duration // Defaults to 1s
+	Min      time.Duration // Defaults to 7s
+	Max      time.Duration // Defaults to 3m
+	MaxExp   int           // 63 if out of range or 0
+	ExpM     float64       // >= 0
+	ExpScale float64       // (minimum is >= 0, defaults to 1.5)
 }
 
-func (b *backoff) UnmarshalYAML(load func(interface{}) error) error {
-	type plain backoff
-	v := plain(DefaultBackoff)
-
-	err := load(&v)
-	if err != nil {
-		return err
+func (b *backoff) Check() error {
+	switch {
+	case b.Factor < 1:
+		return fmt.Errorf("factor must be > 1; got %v", b.Factor)
+	case b.Grow < 0:
+		return fmt.Errorf("grow must be >= 0s; got %s", b.Grow)
+	case b.Min < 0:
+		return fmt.Errorf("min must be >= 0s; got %s", b.Min)
+	case b.Max < b.Min:
+		return fmt.Errorf("max must be >= min (%s); got %s", b.Min, b.Max)
+	case b.MaxExp <= 0 || b.MaxExp > 60:
+		return fmt.Errorf("max-exp must be > 0 and <= 60; got %f", b.MaxExp)
+	case b.ExpM < 0:
+		return fmt.Errorf("exp-m must be >= 0; got %f", b.ExpM)
+	case b.ExpScale < 0:
+		return fmt.Errorf("exp-y must be >= 0; got %f", b.ExpScale)
 	}
-
-	if v.ExpScale < 0 {
-		return errors.New("backoff: exp-y must be > 0")
-	}
-
-	*b = backoff(v)
-
 	return nil
 }
 
